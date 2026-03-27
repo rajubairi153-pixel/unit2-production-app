@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNIT-2 Production Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0a0e1a; --surface:#111827; --surface2:#1a2235; --border:#1e2d45;
+    --accent:#00d4ff; --accent2:#ff6b35; --green:#22c55e; --yellow:#f59e0b;
+    --red:#ef4444; --text:#e2e8f0; --muted:#64748b; --gold:#fbbf24;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+  /* AUTH */
+  #auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0a0e1a,#0f1f35,#0a0e1a);display:flex;align-items:center;justify-content:center;z-index:1000}
+  .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:44px;width:420px;box-shadow:0 25px 80px rgba(0,212,255,0.1)}
+  .auth-logo{text-align:center;margin-bottom:28px}
+  .auth-logo .logo-icon{width:60px;height:60px;background:linear-gradient(135deg,var(--accent),#0066ff);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:10px}
+  .auth-logo h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--accent);letter-spacing:2px}
+  .auth-logo p{color:var(--muted);font-size:12px;margin-top:3px}
+  .fg{margin-bottom:18px}
+  .fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+  .fg input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s}
+  .fg input:focus{border-color:var(--accent)}
+  .btn-login{width:100%;background:linear-gradient(135deg,var(--accent),#0066ff);border:none;border-radius:8px;padding:13px;color:white;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:opacity .2s}
+  .btn-login:hover{opacity:.9}
+  .btn-login:disabled{opacity:.5;cursor:not-allowed}
+  #auth-error{color:var(--red);font-size:13px;text-align:center;margin-top:10px;min-height:18px}
+
+  /* APP */
+  #app{display:none;flex-direction:column;min-height:100vh}
+  .topnav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .nav-brand{display:flex;align-items:center;gap:10px}
+  .nav-logo{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#0066ff);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+  .nav-brand h2{font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;color:var(--accent);letter-spacing:1px}
+  .nav-right{display:flex;align-items:center;gap:14px}
+  .user-badge{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:13px}
+  .u-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white}
+  .role-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:1px}
+  .role-admin{background:rgba(251,191,36,.15);color:var(--gold)}
+  .role-user{background:rgba(0,212,255,.1);color:var(--accent)}
+  .btn-logout{background:transparent;border:1px solid var(--border);border-radius:7px;padding:6px 13px;color:var(--muted);font-size:13px;cursor:pointer;transition:all .2s}
+  .btn-logout:hover{border-color:var(--red);color:var(--red)}
+  .db-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px}
+  .db-dot.off{background:var(--red)}
+
+  .main-layout{display:flex;flex:1}
+  .sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);padding:18px 0;flex-shrink:0}
+  .ss-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:4px 22px;margin-bottom:4px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:9px 22px;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;border-left:3px solid transparent;transition:all .15s;white-space:nowrap}
+  .nav-item:hover{color:var(--text);background:var(--surface2)}
+  .nav-item.active{color:var(--accent);background:rgba(0,212,255,.06);border-left-color:var(--accent)}
+  .nav-icon{font-size:15px;width:19px;text-align:center}
+  .ss-block{margin-bottom:6px}
+
+  .content{flex:1;padding:26px;overflow-y:auto}
+  .view{display:none}.view.active{display:block}
+  .page-header{margin-bottom:26px}
+  .page-header h1{font-family:'Rajdhani',sans-serif;font-size:27px;font-weight:700}
+  .page-header p{color:var(--muted);font-size:13px;margin-top:3px}
+
+  .cards-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:26px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;position:relative;overflow:hidden;transition:transform .2s}
+  .stat-card:hover{transform:translateY(-2px)}
+  .card-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+  .card-value{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;line-height:1}
+  .card-sub{font-size:11px;color:var(--muted);margin-top:5px}
+  .card-badge{position:absolute;top:14px;right:14px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px}
+  .badge-green{background:rgba(34,197,94,.15);color:var(--green)}
+  .badge-yellow{background:rgba(245,158,11,.15);color:var(--yellow)}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+
+  .table-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:26px}
+  .table-header{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .table-header h3{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700}
+  .table-actions{display:flex;gap:8px}
+  .btn-ex{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:7px;padding:7px 14px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+  .btn-ex:hover{background:rgba(0,212,255,.2)}
+  table{width:100%;border-collapse:collapse}
+  th{background:var(--surface2);padding:10px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:left}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--surface2)}
+  .pct-cell{font-weight:700;padding:3px 9px;border-radius:10px;font-size:12px}
+  .pct-green{background:rgba(34,197,94,.12);color:var(--green)}
+  .pct-yellow{background:rgba(245,158,11,.12);color:var(--yellow)}
+  .pct-red{background:rgba(239,68,68,.12);color:var(--red)}
+
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:26px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:22px}
+  .chart-card h3{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px}
+  .chart-wrap{position:relative;height:210px}
+
+  .entry-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:26px;max-width:680px}
+  .entry-card h2{font-family:'Rajdhani',sans-serif;font-size:21px;font-weight:700;margin-bottom:5px}
+  .entry-card p{color:var(--muted);font-size:13px;margin-bottom:22px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-col{display:flex;flex-direction:column}
+  .form-col label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+  .form-col input,.form-col select{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 13px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
+  .form-col input:focus,.form-col select:focus{border-color:var(--accent)}
+  .form-col select option{background:var(--surface)}
+  .btn-submit{background:linear-gradient(135deg,var(--green),#16a34a);border:none;border-radius:7px;padding:12px 26px;color:white;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:opacity .2s}
+  .btn-submit:hover{opacity:.9}
+  .btn-submit:disabled{opacity:.5;cursor:not-allowed}
+
+  .toast{position:fixed;bottom:22px;right:22px;padding:13px 22px;border-radius:9px;font-weight:600;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:var(--green);color:white}
+  .toast.error{background:var(--red);color:white}
+
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:22px}
+  .settings-card h3{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+  .user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+  .user-row:last-child{border-bottom:none}
+  .ui{display:flex;align-items:center;gap:9px}
+  .uav{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white}
+  .un{font-weight:600;font-size:13px}
+  .uu{font-size:11px;color:var(--muted)}
+  .perm-tags{display:flex;gap:5px;flex-wrap:wrap}
+  .perm-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .pt-Container{background:rgba(0,212,255,.1);color:var(--accent)}
+  .pt-Lid{background:rgba(168,85,247,.1);color:#a855f7}
+  .pt-Assembly{background:rgba(249,115,22,.1);color:#f97316}
+  .pt-Charging{background:rgba(236,72,153,.1);color:#ec4899}
+  .pt-Packing{background:rgba(34,197,94,.1);color:var(--green)}
+  .pt-Dispatch{background:rgba(245,158,11,.1);color:var(--yellow)}
+  .metric-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .metric-row:last-child{border-bottom:none}
+
+  .loading{text-align:center;padding:60px;color:var(--muted)}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media print{.topnav,.sidebar,.btn-logout,.btn-ex{display:none!important}body{background:white!important;color:black!important}.content{padding:0!important}.table-card,.stat-card,.chart-card{background:white!important;border:1px solid #ddd!important}th{background:#f3f4f6!important}}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-icon">⚡</div>
+      <h1>UNIT-2 PRODUCTION</h1>
+      <p>Battery Manufacturing · Analytics Dashboard</p>
+    </div>
+    <div class="fg">
+      <label>Username</label>
+      <input type="text" id="l-user" placeholder="e.g. admin or user1" />
+    </div>
+    <div class="fg">
+      <label>Password</label>
+      <input type="password" id="l-pass" placeholder="Enter password" />
+    </div>
+    <button class="btn-login" id="btn-login" onclick="doLogin()">LOGIN →</button>
+    <div id="auth-error"></div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.7">
+      <b style="color:var(--accent)">Accounts:</b><br>
+      admin / admin123 &nbsp;|&nbsp; user1–user5 / user123<br>
+      <span style="color:var(--muted)">API: <span id="api-status-label" style="color:var(--yellow)">connecting…</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav class="topnav">
+    <div class="nav-brand">
+      <div class="nav-logo">⚡</div>
+      <h2>UNIT-2 PRODUCTION</h2>
+    </div>
+    <div class="nav-right">
+      <span style="font-size:12px;color:var(--muted)"><span class="db-dot" id="db-dot"></span><span id="db-label">MongoDB</span></span>
+      <div class="user-badge">
+        <div class="u-av" id="nav-av" style="background:#0066ff">A</div>
+        <span id="nav-name" style="font-weight:600">Admin</span>
+        <span class="role-tag" id="nav-role">ADMIN</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">⎋ Logout</button>
+    </div>
+  </nav>
+
+  <div class="main-layout">
+    <aside class="sidebar">
+      <div class="ss-block">
+        <div class="ss-title">Overview</div>
+        <div class="nav-item active" id="ni-dashboard" onclick="showView('dashboard')"><span class="nav-icon">📊</span> Dashboard</div>
+        <div class="nav-item" id="ni-report" onclick="showView('report')"><span class="nav-icon">📈</span> Reports</div>
+      </div>
+      <div class="ss-block" style="margin-top:8px">
+        <div class="ss-title">Data Entry</div>
+        <div class="nav-item" id="ni-entry" onclick="showView('entry')"><span class="nav-icon">✏️</span> Enter Data</div>
+        <div class="nav-item" id="ni-history" onclick="showView('history')"><span class="nav-icon">📋</span> History</div>
+      </div>
+      <div class="ss-block" id="admin-nav" style="display:none;margin-top:8px">
+        <div class="ss-title">Admin</div>
+        <div class="nav-item" id="ni-settings" onclick="showView('settings')"><span class="nav-icon">⚙️</span> Settings</div>
+      </div>
+    </aside>
+
+    <main class="content">
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="page-header">
+          <h1>Production Dashboard</h1>
+          <p>March 2026 · UNIT-2 Battery Manufacturing</p>
+        </div>
+        <div class="cards-grid" id="cards-grid"><div class="loading"><div class="spinner"></div><br>Loading from MongoDB…</div></div>
+        <div class="table-card">
+          <div class="table-header">
+            <h3>📊 Monthly Production Summary — UNIT-2</h3>
+            <div class="table-actions">
+              <button class="btn-ex" onclick="exportCSV()">⬇ Excel/CSV</button>
+              <button class="btn-ex" onclick="window.print()">🖨 Print</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>Section</th><th>Capacity</th><th>Month Target</th>
+              <th>Till Date Target</th><th>Till Date Achieved</th>
+              <th>% Achieved</th><th>Status</th><th>Gap</th>
+            </tr></thead>
+            <tbody id="sum-tbody"><tr><td colspan="8" class="loading">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="chart-grid">
+          <div class="chart-card"><h3>📉 Plan vs Actual</h3><div class="chart-wrap"><canvas id="c-pa"></canvas></div></div>
+          <div class="chart-card"><h3>🎯 % Achievement</h3><div class="chart-wrap"><canvas id="c-pct"></canvas></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="chart-card"><h3>📅 Daily Trend — Container</h3><div class="chart-wrap"><canvas id="c-daily"></canvas></div></div>
+          <div class="chart-card"><h3>🏭 Capacity Utilization</h3><div class="chart-wrap"><canvas id="c-util"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- ENTRY -->
+      <div class="view" id="view-entry">
+        <div class="page-header"><h1>Data Entry</h1><p id="entry-sub">Enter production data</p></div>
+        <div class="entry-card">
+          <h2 id="entry-title">Enter Production Data</h2>
+          <p>Fill in today's actual production numbers for your section.</p>
+          <div id="entry-form"></div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="view" id="view-history">
+        <div class="page-header"><h1>Entry History</h1><p>All recorded production entries from MongoDB</p></div>
+        <div style="display:flex;gap:10px;margin-bottom:18px">
+          <select id="f-section" onchange="loadHistory()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-size:13px;outline:none">
+            <option value="all">All Sections</option>
+            <option>Container</option><option>Lid</option><option>Assembly</option>
+            <option>Charging</option><option>Packing</option><option>Dispatch</option>
+          </select>
+          <input type="month" id="f-month" value="2026-03" onchange="loadHistory()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-size:13px;outline:none" />
+        </div>
+        <div class="table-card">
+          <table>
+            <thead><tr><th>Date</th><th>Section</th><th>Plan</th><th>Actual</th><th>% Achieved</th><th>Shift</th><th>Entered By</th></tr></thead>
+            <tbody id="hist-tbody"><tr><td colspan="7" class="loading">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORT -->
+      <div class="view" id="view-report">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px">
+          <div class="page-header" style="margin-bottom:0"><h1>Production Report</h1><p>Detailed analysis · March 2026</p></div>
+          <button class="btn-ex" onclick="window.print()" style="margin-top:6px">🖨 Print</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px" id="rep-kpis"></div>
+        <div class="table-card">
+          <div class="table-header"><h3>Section-wise Performance</h3></div>
+          <table>
+            <thead><tr><th>Section</th><th>Capacity</th><th>Month Target</th><th>Till Date Target</th><th>Till Date Achieved</th><th>% Achieved</th><th>Gap</th><th>Efficiency</th></tr></thead>
+            <tbody id="rep-tbody"></tbody>
+          </table>
+        </div>
+        <div class="chart-grid" style="margin-top:18px">
+          <div class="chart-card"><h3>📊 Gap Analysis</h3><div class="chart-wrap"><canvas id="c-gap"></canvas></div></div>
+          <div class="chart-card"><h3>📡 Efficiency Radar</h3><div class="chart-wrap"><canvas id="c-radar"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="view" id="view-settings">
+        <div class="page-header"><h1>⚙️ Settings & Permissions</h1><p>Users, roles, and MongoDB connection info</p></div>
+        <div class="settings-grid">
+          <div class="settings-card"><h3>👥 User Accounts</h3><div id="s-users"><div class="loading">Loading…</div></div></div>
+          <div class="settings-card">
+            <h3>🔐 Section Permissions</h3>
+            <div id="s-perms"></div>
+          </div>
+        </div>
+        <div style="margin-top:18px">
+          <div class="settings-card">
+            <h3>🗄️ MongoDB Atlas — Connection Info</h3>
+            <div class="metric-row"><span>Cluster</span><span style="color:var(--accent);font-weight:600">analyx.bdv5cpz.mongodb.net</span></div>
+            <div class="metric-row"><span>App Name</span><span style="color:var(--accent);font-weight:600">Analyx</span></div>
+            <div class="metric-row"><span>Database</span><span style="color:var(--accent);font-weight:600">unit2prod</span></div>
+            <div class="metric-row"><span>Collections</span><span style="color:var(--muted)">users · entries · summaries</span></div>
+            <div class="metric-row"><span>Status</span><span id="s-db-status" style="color:var(--green);font-weight:600">● Connected</span></div>
+            <div class="metric-row"><span>Backend Host</span><span style="color:var(--green);font-weight:600">Render.com (Free)</span></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────
+// Change this to your Render URL after deployment:
+// e.g. https://unit2-production-app.onrender.com
+const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? 'http://localhost:3000'
+  : '';  // Same origin when hosted on Render
+
+// ─── STATE ────────────────────────────────────────────────
+let token = localStorage.getItem('unit2_token');
+let currentUser = JSON.parse(localStorage.getItem('unit2_user') || 'null');
+let summaryData = [];
+let charts = {};
+
+const SEC_COLORS = {
+  Container:'#00d4ff', Lid:'#a855f7', Assembly:'#f97316',
+  Charging:'#ec4899',  Packing:'#22c55e', Dispatch:'#f59e0b'
+};
+
+// ─── HEALTH CHECK ─────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch(API_BASE + '/api/health');
+    const d = await r.json();
+    const connected = d.db === 'connected';
+    document.getElementById('api-status-label').textContent = connected ? '✅ Connected' : '⚠ DB offline';
+    document.getElementById('api-status-label').style.color = connected ? 'var(--green)' : 'var(--red)';
+    const dot = document.getElementById('db-dot');
+    if (dot) { dot.className = 'db-dot' + (connected ? '' : ' off'); }
+  } catch {
+    document.getElementById('api-status-label').textContent = '⚠ Server offline — using demo mode';
+    document.getElementById('api-status-label').style.color = 'var(--yellow)';
+  }
+}
+
+// ─── AUTH ─────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('l-user').value.trim();
+  const password = document.getElementById('l-pass').value;
+  const btn = document.getElementById('btn-login');
+  const err = document.getElementById('auth-error');
+  if (!username || !password) { err.textContent = 'Enter username and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Logging in…';
+  try {
+    const r = await fetch(API_BASE + '/api/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username, password })
+    });
+    const d = await r.json();
+    if (!r.ok) { err.textContent = '❌ ' + (d.error || 'Login failed'); btn.disabled=false; btn.textContent='LOGIN →'; return; }
+    token = d.token;
+    currentUser = d.user;
+    localStorage.setItem('unit2_token', token);
+    localStorage.setItem('unit2_user', JSON.stringify(currentUser));
+    err.textContent = '';
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    setupUI();
+    loadDashboard();
+  } catch (e) {
+    // Fallback demo mode if server offline
+    err.textContent = '⚠ Server offline — using demo mode';
+    const DEMO = {
+      admin:{name:'Super Admin',username:'admin',pass:'admin123',role:'admin',sections:['Container','Lid','Assembly','Charging','Packing','Dispatch'],color:'#f59e0b'},
+      user1:{name:'Ravi Kumar',username:'user1',pass:'user123',role:'user',sections:['Container','Lid'],color:'#00d4ff'},
+      user2:{name:'Suresh Babu',username:'user2',pass:'user123',role:'user',sections:['Assembly'],color:'#a855f7'},
+      user3:{name:'Priya Devi',username:'user3',pass:'user123',role:'user',sections:['Charging'],color:'#ec4899'},
+      user4:{name:'Mohan Rao',username:'user4',pass:'user123',role:'user',sections:['Packing'],color:'#22c55e'},
+      user5:{name:'Anita Singh',username:'user5',pass:'user123',role:'user',sections:['Dispatch'],color:'#f97316'},
+    };
+    const u = DEMO[username];
+    if (!u || password !== u.pass) { err.textContent = '❌ Invalid credentials'; btn.disabled=false; btn.textContent='LOGIN →'; return; }
+    token = 'demo'; currentUser = u;
+    localStorage.setItem('unit2_token', token);
+    localStorage.setItem('unit2_user', JSON.stringify(currentUser));
+    err.textContent = '';
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    setupUI(); loadDashboard();
+  }
+  btn.disabled=false; btn.textContent='LOGIN →';
+}
+
+function doLogout() {
+  token = null; currentUser = null;
+  localStorage.removeItem('unit2_token');
+  localStorage.removeItem('unit2_user');
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  Object.values(charts).forEach(c=>c&&c.destroy&&c.destroy()); charts={};
+}
+
+function setupUI() {
+  const u = currentUser;
+  document.getElementById('nav-av').textContent = u.name[0];
+  document.getElementById('nav-av').style.background = u.color || '#0066ff';
+  document.getElementById('nav-name').textContent = u.name;
+  const rt = document.getElementById('nav-role');
+  rt.textContent = u.role==='admin' ? 'ADMIN' : (u.sections||[''])[0].toUpperCase();
+  rt.className = 'role-tag ' + (u.role==='admin'?'role-admin':'role-user');
+  document.getElementById('admin-nav').style.display = u.role==='admin' ? 'block' : 'none';
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const ni = document.getElementById('ni-'+name);
+  if (ni) ni.classList.add('active');
+  if (name==='entry') renderEntryForm();
+  if (name==='history') loadHistory();
+  if (name==='report') renderReport();
+  if (name==='settings') loadSettings();
+}
+
+// ─── API HELPER ───────────────────────────────────────────
+async function api(path, opts={}) {
+  const headers = {'Content-Type':'application/json', 'Authorization':'Bearer '+token};
+  const r = await fetch(API_BASE + path, {...opts, headers});
+  if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+  return r.json();
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────
+const DEMO_SUMMARY = [
+  {section:'Container',capacity:15000,monthTarget:15000,tillDateTarget:11400,tillDateAchieved:10445},
+  {section:'Lid',      capacity:25000,monthTarget:25000,tillDateTarget:19000,tillDateAchieved:16100},
+  {section:'Assembly', capacity:42000,monthTarget:35000,tillDateTarget:26600,tillDateAchieved:19802},
+  {section:'Charging', capacity:42000,monthTarget:35000,tillDateTarget:26600,tillDateAchieved:19938},
+  {section:'Packing',  capacity:42000,monthTarget:35000,tillDateTarget:26600,tillDateAchieved:21968},
+  {section:'Dispatch', capacity:42000,monthTarget:39000,tillDateTarget:29640,tillDateAchieved:18614},
+];
+
+async function loadDashboard() {
+  try {
+    summaryData = token==='demo' ? DEMO_SUMMARY : await api('/api/summary?month=2026-03');
+    if (!summaryData.length) summaryData = DEMO_SUMMARY;
+  } catch { summaryData = DEMO_SUMMARY; }
+  renderCards();
+  renderSummaryTable();
+  renderCharts();
+}
+
+function renderCards() {
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = summaryData.map(d => {
+    const pct = Math.round(d.tillDateAchieved/d.tillDateTarget*100);
+    const cls = pct>=90?'badge-yellow':pct>=75?'badge-yellow':'badge-red';
+    const c = SEC_COLORS[d.section];
+    return `<div class="stat-card" style="border-top:3px solid ${c}">
+      <div class="card-label">${d.section}</div>
+      <div class="card-value" style="color:${c}">${pct}%</div>
+      <div class="card-sub">Achieved: ${d.tillDateAchieved.toLocaleString()}</div>
+      <div class="card-sub">Target: ${d.tillDateTarget.toLocaleString()}</div>
+      <div class="card-badge ${cls}">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSummaryTable() {
+  document.getElementById('sum-tbody').innerHTML = summaryData.map(d => {
+    const pct = Math.round(d.tillDateAchieved/d.tillDateTarget*100);
+    const gap = d.tillDateTarget - d.tillDateAchieved;
+    const cls = pct>=90?'pct-yellow':pct>=75?'pct-yellow':'pct-red';
+    const icon = pct>=90?'🟡':pct>=75?'🟠':'🔴';
+    const status = pct>=90?'On Track':pct>=75?'Below Target':'Critical';
+    return `<tr>
+      <td><b style="color:${SEC_COLORS[d.section]}">${d.section}</b></td>
+      <td>${d.capacity.toLocaleString()}</td>
+      <td>${d.monthTarget.toLocaleString()}</td>
+      <td>${d.tillDateTarget.toLocaleString()}</td>
+      <td><b>${d.tillDateAchieved.toLocaleString()}</b></td>
+      <td><span class="pct-cell ${cls}">${pct}%</span></td>
+      <td>${icon} ${status}</td>
+      <td style="color:var(--red)">${gap>0?'-'+gap.toLocaleString():'✅ Ahead'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function copts() {
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}},
+    scales:{
+      x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+      y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}
+    }
+  };
+}
+
+function dc(id) { const k=id.replace('c-',''); if(charts[k]){charts[k].destroy();delete charts[k];} }
+
+function renderCharts() {
+  const secs = summaryData.map(d=>d.section);
+  const cols = secs.map(s=>SEC_COLORS[s]);
+
+  dc('c-pa');
+  charts['pa'] = new Chart(document.getElementById('c-pa'),{type:'bar',data:{labels:secs,datasets:[
+    {label:'Target',data:summaryData.map(d=>d.tillDateTarget),backgroundColor:'rgba(100,116,139,0.5)',borderRadius:4},
+    {label:'Achieved',data:summaryData.map(d=>d.tillDateAchieved),backgroundColor:cols.map(c=>c+'cc'),borderRadius:4}
+  ]},options:copts()});
+
+  dc('c-pct');
+  charts['pct'] = new Chart(document.getElementById('c-pct'),{type:'bar',data:{labels:secs,datasets:[
+    {label:'% Achieved',data:summaryData.map(d=>Math.round(d.tillDateAchieved/d.tillDateTarget*100)),backgroundColor:cols.map(c=>c+'cc'),borderRadius:6}
+  ]},options:{...copts(),scales:{...copts().scales,y:{...copts().scales.y,max:110}}}});
+
+  dc('c-daily');
+  const days = Array.from({length:26},(_,i)=>`${i+1}`);
+  const dailyActual=[0,600,300,0,0,600,200,0,200,100,360,0,375,250,0,0,0,0,0,300,350,400,420,450,480,550];
+  charts['daily'] = new Chart(document.getElementById('c-daily'),{type:'line',data:{labels:days,datasets:[
+    {label:'Plan',data:Array(26).fill(600),borderColor:'#64748b',borderDash:[5,5],fill:false,pointRadius:0},
+    {label:'Actual',data:dailyActual,borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,0.1)',fill:true,tension:0.3,pointRadius:2}
+  ]},options:copts()});
+
+  dc('c-util');
+  charts['util'] = new Chart(document.getElementById('c-util'),{type:'bar',data:{labels:secs,datasets:[
+    {label:'Capacity',data:summaryData.map(d=>d.capacity),backgroundColor:'rgba(100,116,139,0.3)',borderRadius:4},
+    {label:'Month Target',data:summaryData.map(d=>d.monthTarget),backgroundColor:cols.map(c=>c+'99'),borderRadius:4}
+  ]},options:copts()});
+}
+
+// ─── ENTRY FORM ───────────────────────────────────────────
+function renderEntryForm() {
+  const secs = currentUser.sections || [];
+  document.getElementById('entry-sub').textContent = 'Sections: ' + secs.join(', ');
+  document.getElementById('entry-form').innerHTML = `
+    <div class="form-row">
+      <div class="form-col"><label>Date</label><input type="date" id="e-date" value="${new Date().toISOString().split('T')[0]}" /></div>
+      <div class="form-col"><label>Section</label>
+        <select id="e-section">${secs.map(s=>`<option>${s}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Plan (Today's Target)</label><input type="number" id="e-plan" placeholder="e.g. 1400" min="0" /></div>
+      <div class="form-col"><label>Actual Production</label><input type="number" id="e-actual" placeholder="e.g. 1350" min="0" /></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Shift</label>
+        <select id="e-shift">
+          <option>Morning (6AM-2PM)</option>
+          <option>Evening (2PM-10PM)</option>
+          <option>Night (10PM-6AM)</option>
+          <option>Full Day</option>
+        </select>
+      </div>
+      <div class="form-col"><label>Remarks (optional)</label><input type="text" id="e-remarks" placeholder="Any notes…" /></div>
+    </div>
+    <button class="btn-submit" id="btn-save" onclick="submitEntry()">✅ Save to MongoDB</button>
+  `;
+}
+
+async function submitEntry() {
+  const date = document.getElementById('e-date').value;
+  const section = document.getElementById('e-section').value;
+  const plan = +document.getElementById('e-plan').value;
+  const actual = +document.getElementById('e-actual').value;
+  const shift = document.getElementById('e-shift').value;
+  const remarks = document.getElementById('e-remarks').value;
+  if (!date||!plan||!actual) { showToast('Please fill all required fields.','error'); return; }
+  
+  const btn = document.getElementById('btn-save');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    if (token==='demo') {
+      await new Promise(r=>setTimeout(r,600)); // simulate
+      showToast('✅ [Demo] Entry saved: '+section+' — '+actual+' units','success');
+    } else {
+      await api('/api/entries',{method:'POST',body:JSON.stringify({date,section,plan,actual,shift,remarks})});
+      showToast('✅ Saved to MongoDB! '+section+' — '+actual+' units','success');
+      loadDashboard();
+    }
+  } catch(e) { showToast('❌ Error: '+e.message,'error'); }
+  btn.disabled=false; btn.textContent='✅ Save to MongoDB';
+}
+
+// ─── HISTORY ──────────────────────────────────────────────
+const DEMO_HIST = [
+  {date:'2026-03-26',section:'Container',plan:600,actual:550,shift:'Morning',createdByName:'Ravi Kumar'},
+  {date:'2026-03-26',section:'Lid',plan:1000,actual:900,shift:'Full Day',createdByName:'Ravi Kumar'},
+  {date:'2026-03-25',section:'Assembly',plan:1400,actual:1200,shift:'Morning',createdByName:'Suresh Babu'},
+  {date:'2026-03-25',section:'Charging',plan:1400,actual:1350,shift:'Evening',createdByName:'Priya Devi'},
+  {date:'2026-03-25',section:'Packing',plan:1400,actual:1500,shift:'Full Day',createdByName:'Mohan Rao'},
+  {date:'2026-03-24',section:'Dispatch',plan:1560,actual:1100,shift:'Morning',createdByName:'Anita Singh'},
+];
+
+async function loadHistory() {
+  const section = document.getElementById('f-section')?.value || 'all';
+  const month = document.getElementById('f-month')?.value || '2026-03';
+  let rows;
+  try {
+    if (token==='demo') { rows = DEMO_HIST.filter(r=>section==='all'||r.section===section); }
+    else { rows = await api(`/api/entries?section=${section}&month=${month}`); }
+  } catch { rows = DEMO_HIST; }
+  
+  document.getElementById('hist-tbody').innerHTML = rows.length
+    ? rows.map(r=>{
+        const pct = Math.round(r.actual/r.plan*100);
+        const cls = pct>=90?'pct-green':pct>=75?'pct-yellow':'pct-red';
+        return `<tr>
+          <td>${r.date}</td>
+          <td><b style="color:${SEC_COLORS[r.section]}">${r.section}</b></td>
+          <td>${r.plan.toLocaleString()}</td>
+          <td><b>${r.actual.toLocaleString()}</b></td>
+          <td><span class="pct-cell ${cls}">${pct}%</span></td>
+          <td>${r.shift||'-'}</td>
+          <td>${r.createdByName||r.createdBy||'-'}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted)">No entries found</td></tr>`;
+}
+
+// ─── REPORT ───────────────────────────────────────────────
+function renderReport() {
+  if (!summaryData.length) { loadDashboard().then(()=>renderReport()); return; }
+  const secs = summaryData.map(d=>d.section);
+  const allPct = summaryData.map(d=>Math.round(d.tillDateAchieved/d.tillDateTarget*100));
+  const avg = Math.round(allPct.reduce((a,b)=>a+b,0)/allPct.length);
+  const totA = summaryData.reduce((a,d)=>a+d.tillDateAchieved,0);
+  const totT = summaryData.reduce((a,d)=>a+d.tillDateTarget,0);
+
+  document.getElementById('rep-kpis').innerHTML = `
+    <div class="stat-card" style="border-top:3px solid var(--accent)">
+      <div class="card-label">Avg Achievement</div><div class="card-value" style="color:var(--accent)">${avg}%</div><div class="card-sub">All sections</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--green)">
+      <div class="card-label">Total Achieved</div><div class="card-value" style="color:var(--green)">${totA.toLocaleString()}</div><div class="card-sub">Combined</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--red)">
+      <div class="card-label">Total Gap</div><div class="card-value" style="color:var(--red)">${(totT-totA).toLocaleString()}</div><div class="card-sub">Below target</div>
+    </div>`;
+
+  document.getElementById('rep-tbody').innerHTML = summaryData.map(d=>{
+    const pct=Math.round(d.tillDateAchieved/d.tillDateTarget*100);
+    const gap=d.tillDateTarget-d.tillDateAchieved;
+    const eff=Math.round(d.tillDateAchieved/d.capacity*100);
+    const cls=pct>=90?'pct-green':pct>=80?'pct-yellow':'pct-red';
+    return `<tr>
+      <td><b style="color:${SEC_COLORS[d.section]}">${d.section}</b></td>
+      <td>${d.capacity.toLocaleString()}</td><td>${d.monthTarget.toLocaleString()}</td>
+      <td>${d.tillDateTarget.toLocaleString()}</td><td><b>${d.tillDateAchieved.toLocaleString()}</b></td>
+      <td><span class="pct-cell ${cls}">${pct}%</span></td>
+      <td style="color:var(--red)">${gap>0?'-'+gap.toLocaleString():'✅ Ahead'}</td>
+      <td>${eff}%</td>
+    </tr>`;
+  }).join('');
+
+  dc('c-gap');
+  charts['gap']=new Chart(document.getElementById('c-gap'),{type:'bar',data:{labels:secs,datasets:[
+    {label:'Achieved',data:summaryData.map(d=>d.tillDateAchieved),backgroundColor:secs.map(s=>SEC_COLORS[s]+'cc'),borderRadius:4},
+    {label:'Gap',data:summaryData.map(d=>Math.max(0,d.tillDateTarget-d.tillDateAchieved)),backgroundColor:'rgba(239,68,68,0.4)',borderRadius:4}
+  ]},options:{...copts(),scales:{x:{stacked:true,...copts().scales.x},y:{stacked:true,...copts().scales.y}}}});
+
+  dc('c-radar');
+  charts['radar']=new Chart(document.getElementById('c-radar'),{type:'radar',data:{labels:secs,datasets:[{
+    label:'Efficiency %',
+    data:summaryData.map(d=>Math.round(d.tillDateAchieved/d.capacity*100)),
+    backgroundColor:'rgba(0,212,255,0.1)',borderColor:'#00d4ff',pointBackgroundColor:'#00d4ff'
+  }]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}},
+    scales:{r:{ticks:{color:'#64748b',backdropColor:'transparent'},grid:{color:'rgba(255,255,255,0.06)'},pointLabels:{color:'#94a3b8',font:{size:11}}}}}
+  });
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────
+const DEMO_USERS = [
+  {name:'Super Admin',username:'admin',role:'admin',sections:['Container','Lid','Assembly','Charging','Packing','Dispatch'],color:'#f59e0b'},
+  {name:'Ravi Kumar', username:'user1',role:'user', sections:['Container','Lid'],color:'#00d4ff'},
+  {name:'Suresh Babu',username:'user2',role:'user', sections:['Assembly'],color:'#a855f7'},
+  {name:'Priya Devi', username:'user3',role:'user', sections:['Charging'],color:'#ec4899'},
+  {name:'Mohan Rao',  username:'user4',role:'user', sections:['Packing'],color:'#22c55e'},
+  {name:'Anita Singh',username:'user5',role:'user', sections:['Dispatch'],color:'#f97316'},
+];
+
+async function loadSettings() {
+  let users;
+  try { users = token==='demo' ? DEMO_USERS : await api('/api/users'); }
+  catch { users = DEMO_USERS; }
+
+  document.getElementById('s-users').innerHTML = users.map(u=>`
+    <div class="user-row">
+      <div class="ui">
+        <div class="uav" style="background:${u.color||'#0066ff'}">${u.name[0]}</div>
+        <div><div class="un">${u.name}</div><div class="uu">@${u.username}</div></div>
+      </div>
+      <span class="role-tag ${u.role==='admin'?'role-admin':'role-user'}">${u.role.toUpperCase()}</span>
+    </div>`).join('');
+
+  document.getElementById('s-perms').innerHTML = users.map(u=>`
+    <div style="margin-bottom:12px">
+      <div style="font-weight:700;font-size:12px;margin-bottom:5px">${u.name}</div>
+      <div class="perm-tags">${(u.sections||[]).map(s=>`<span class="perm-tag pt-${s}">${s}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ─── CSV EXPORT ───────────────────────────────────────────
+async function exportCSV() {
+  try {
+    if (token !== 'demo') {
+      window.open(API_BASE + '/api/export/csv?month=2026-03', '_blank');
+      return;
+    }
+  } catch {}
+  // Fallback client-side export
+  let csv = 'Section,Capacity,Month Target,Till Date Target,Till Date Achieved,% Achieved\n';
+  summaryData.forEach(d=>{
+    const pct=Math.round(d.tillDateAchieved/d.tillDateTarget*100);
+    csv+=`${d.section},${d.capacity},${d.monthTarget},${d.tillDateTarget},${d.tillDateAchieved},${pct}%\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'unit2_production_march2026.csv';
+  a.click();
+}
+
+// ─── TOAST ────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+checkHealth();
+document.getElementById('l-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+// Auto-login if token exists
+if (token && currentUser) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  setupUI(); loadDashboard();
+}
+</script>
+</body>
+</html>
